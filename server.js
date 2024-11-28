@@ -1,39 +1,34 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose');
-const authRoutes = require('./routes/authRoutes');
-const taskRoutes = require('./routes/taskRoutes');
+const express = require("express");
+const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
+const authRoutes = require("./routes/auth");
+const taskRoutes = require("./routes/task"); // Task Routes Import
+const dotenv = require("dotenv");
+const authMiddleware = require("./middlewares/auth"); // JWT Middleware
 
+// Load environment variables
 dotenv.config();
 
+// Create an Express app
 const app = express();
-const PORT = process.env.PORT || 5001;
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
+// Middleware to parse JSON bodies
+app.use(bodyParser.json());
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/tasks', taskRoutes);
+app.use("/api/auth", authRoutes); // Authentication routes
+app.use("/api/tasks", taskRoutes); // Task management routes
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+// Connect to MongoDB database
+mongoose
+  .connect(process.env.MONGO_URI,)
   .then(() => {
-    console.log("MongoDB Connected");
+    console.log("Database connection done:");
   })
-  .catch((err) => {
-    console.error("MongoDB Connection Error:", err);
+  .catch(err => {
+    console.log("Database connection error:", err);
   });
 
-// General error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something went wrong!');
-});
-
 // Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
