@@ -12,7 +12,13 @@
     "build": "cd client && npm run build",
     "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install --prefix client && npm run build --prefix client"
   },
-  "keywords": ["task manager", "collaboration", "authentication", "react", "node.js"],
+  "keywords": [
+    "task manager",
+    "collaboration",
+    "authentication",
+    "react",
+    "node.js"
+  ],
   "author": "Your Name",
   "license": "ISC",
   "dependencies": {
@@ -22,8 +28,12 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.8.2",
+    "mongobd": "^0.0.1-security.0",
+    "mongodb": "^6.11.0",
+    "mongoose": "^8.8.3",
+    "mongoosh": "^0.0.7",
     "nodemailer": "^6.9.16",
+    "pg": "^8.13.1",
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {

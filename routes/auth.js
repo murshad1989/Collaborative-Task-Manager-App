@@ -1,39 +1,33 @@
-onst express = require('express');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-
+const express = require("express");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User"); // Make sure this path is correct
 const router = express.Router();
 
-// User registration
-router.post('/register', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ email, password: hashedPassword });
-        await newUser.save();
-        res.status(201).send('User registered successfully');
-    } catch (error) {
-        res.status(400).send(error.message);
-    }
+// Register User
+router.post("/register", async (req, res) => {
+  const { name, email, password } = req.body;
+  try {
+    const user = new User({ name, email, password });
+    await user.save();
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
-// User login
-router.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email });
-        if (!user) {
-            throw new Error('User not found');
-        }
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (isMatch) {
-            const token = jwt.sign({ id: user.id }, 'your_jwt_secret');
-            res.status(200).json({ token });
-        } else {
-            throw new Error('Invalid credentials');
-        }
-    } catch (error) {
-        res.status(400).send(error.message);
+// Login User
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user || !(await user.comparePassword(password))) {
+      return res.status(400).json({ error: "Invalid credentials" });
     }
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+    res.json({ token });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
+
+module.exports = router;
