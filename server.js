@@ -1,34 +1,54 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
-const authRoutes = require("./routes/auth");
-const taskRoutes = require("./routes/task"); // Task Routes Import
 const dotenv = require("dotenv");
-const authMiddleware = require("./middlewares/auth"); // JWT Middleware
+const cors = require("cors");
+const morgan = require("morgan");
 
-// Load environment variables
+const authRoutes = require("./routes/authRoutes");
+const taskRoutes = require("./routes/taskRoutes");
+const analyticsRoutes = require("./routes/analyticsRoutes");
+const authMiddleware = require("./middlewares/authMiddleware");
+const db = require("./config/db");
+
+// Environment Variables
 dotenv.config();
 
-// Create an Express app
+// Initialize Express App
 const app = express();
 
-// Middleware to parse JSON bodies
+// Middleware
 app.use(bodyParser.json());
+app.use(cors());
+app.use(morgan("dev"));
 
 // Routes
-app.use("/api/auth", authRoutes); // Authentication routes
-app.use("/api/tasks", taskRoutes); // Task management routes
+app.use("/api/auth", authRoutes); // User Authentication
+app.use("/api/tasks", authMiddleware, taskRoutes); // Task Management
+app.use("/api/analytics", authMiddleware, analyticsRoutes); // Analytics
 
-// Connect to MongoDB database
-mongoose
-  .connect(process.env.MONGO_URI,)
-  .then(() => {
-    console.log("Database connection done:");
+// Handle 404 Errors
+app.use((req, res) => {
+  res.status(404).json({ message: "Endpoint not found" });
+});
+
+// Global Error Handling
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: "Internal Server Error", error: err.message });
+});
+
+// Test Database Connection
+db.getConnection()
+  .then((conn) => {
+    console.log("Database connected successfully!");
+    conn.release();
   })
-  .catch(err => {
-    console.log("Database connection error:", err);
+  .catch((err) => {
+    console.error("Database connection failed:", err.message);
   });
 
-// Start the server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Start the Server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
