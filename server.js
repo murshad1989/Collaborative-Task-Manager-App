@@ -2,6 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
 const cors = require("cors");
+	
 const morgan = require("morgan");
 
 const authRoutes = require("./routes/authRoutes");
