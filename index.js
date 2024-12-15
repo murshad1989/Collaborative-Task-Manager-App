@@ -1,18 +1,17 @@
 const mariadb = require('mariadb');
 
-// Create Pool
 const pool = mariadb.createPool({
-  host: 'localhost',
-  user: 'Task',
-  password: 'Murshad313',
-  database: 'TASKMANAGER',
+  host: 'process.env.DB_HOST',
+  user: 'process.env.DB_USER',
+  password: 'process.env.DB_PASS',
+  database: 'process.env.DB_NAME',
   connectionLimit: 2
 });
 
-// Export pool
+
 module.exports = pool;
 
-// Test connection
+
 async function testConnection() {
   let conn;
   try {
@@ -30,4 +29,3 @@ async function testConnection() {
 }
 
 testConnection();
-
