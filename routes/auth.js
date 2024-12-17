@@ -25,10 +25,19 @@ router.post('/register', async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
+        const [result] = await db.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [
+            name,
+            normalizedEmail,
+            hashedPassword,
+        ]);
 
-        await db.query('INSERT INTO users (name, email, password) VALUES (?, ?, ?)', [name, normalizedEmail, hashedPassword]);
+        const token = jwt.sign(
+            { id: result.insertId, email: normalizedEmail },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
 
-        res.status(201).json({ message: 'User registered successfully' });
+        res.status(201).json({ message: 'User registered successfully', token });
     } catch (err) {
         console.error(err);
         sendError(res, 500, 'Internal server error');
@@ -69,12 +78,15 @@ router.post('/login', async (req, res) => {
     }
 });
 
+
 router.post('/logout', (req, res) => {
     res.status(200).json({ message: 'Logout successful' });
 });
 
+
 router.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
+
     if (!email) {
         return sendError(res, 400, 'Email is required');
     }
@@ -117,6 +129,7 @@ router.post('/forgot-password', async (req, res) => {
     }
 });
 
+
 router.post('/reset-password/:token', async (req, res) => {
     const { token } = req.params;
     const { password } = req.body;
@@ -130,7 +143,6 @@ router.post('/reset-password/:token', async (req, res) => {
         const userId = decoded.id;
 
         const hashedPassword = await bcrypt.hash(password, 10);
-
         await db.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId]);
 
         res.status(200).json({ message: 'Password updated successfully' });

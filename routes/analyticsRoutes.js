@@ -1,11 +1,11 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { getCompletedTasks, getOverdueTasks } = require('../controllers/analyticsController');
+const analyticsController = require("../controllers/analyticsController");
 
-// Route for fetching completed tasks within a time range
-router.get('/completed', getCompletedTasks);
-
-// Route for fetching overdue tasks
-router.get('/overdue', getOverdueTasks);
+router.get("/completed-tasks", analyticsController.getCompletedTasks);
+router.get("/overdue-tasks", analyticsController.getOverdueTasks);
+router.get("/task-statistics", analyticsController.getTaskStatistics);
+router.get("/user-performance", analyticsController.getUserPerformance);
+router.get("/task-details/:taskId", analyticsController.getTaskDetails);
 
 module.exports = router;

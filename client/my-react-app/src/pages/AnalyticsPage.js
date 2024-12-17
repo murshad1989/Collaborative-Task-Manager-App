@@ -1,6 +1,6 @@
 import React from "react";
 import CompletedTasksChart from "../components/CompletedTasksChart";
-import OverdueTasksChart from "../components/OverdueTasksChart";
+import OverdueTasksChart from "../components/OverDueTasksChart";
 
 const AnalyticsPage = () => {
   const completedTasksData = [

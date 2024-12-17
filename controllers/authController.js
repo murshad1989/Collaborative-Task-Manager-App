@@ -72,23 +72,20 @@ exports.forgotPassword = async (req, res) => {
       return res.status(404).json({ message: 'No user found with this email.' });
     }
 
-   
     const resetToken = jwt.sign({ id: user[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'process.env.EMAIL_USER',
-        pass: 'process.env.PASS_USER',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     const resetUrl = `http://localhost:3000/auth/resetPassword?token=${resetToken}`;
-    
-   
+
     const mailOptions = {
-      from: 'process.env.EMAIL-USER',
+      from: process.env.EMAIL_USER,
       to: email,
       subject: 'Password Reset Request',
       html: `<p>Click <a href="${resetUrl}">here</a> to reset your password.</p>`,
@@ -115,11 +112,9 @@ exports.resetPassword = async (req, res) => {
   }
 
   try {
-    
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-   
     await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, decoded.id]);
 
     res.status(200).json({ message: 'Password reset successful.' });
