@@ -1,12 +1,25 @@
-const mongoose = require("mongoose");
+const db = require("../config/db");
 
-const TaskSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: { type: String },
-  priority: { type: String, enum: ["Low", "Medium", "High"], required: true },
-  status: { type: String, enum: ["Pending", "In Progress", "Completed"], default: "Pending" },
-  dueDate: { type: Date },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // Reference to the User model
-}, { timestamps: true });
-
-module.exports = mongoose.model("Task", TaskSchema);
+// Task Table creation (if not exists)
+const createTaskTable = async () => {
+  try {
+    const query = `
+      CREATE TABLE IF NOT EXISTS tasks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        priority ENUM('Low', 'Medium', 'High') NOT NULL,
+        status ENUM('Pending', 'In Progress', 'Completed') DEFAULT 'Pending',
+        dueDate DATE,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
+    `;
+    const connection = await db.getConnection();
+    await connection.query(query);
+    connection.release();
+    console.log("Task table created successfully.");
+  } catch (error) {
+    console.error("Error creating task table:", error);
+  }
+};
