@@ -1,16 +1,17 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import TaskForm from './components/TaskForm';
-import TaskList from './components/TaskList';
-import Login from './components/Login';
+import './styles/HomePage.css'; // Ensure `.css` extension is present
+import './styles/Register.css'; // Adjust path if styles folder is at src level
+import RegisterPage from './pages/RegisterPage'; // Create/Register
+import LoginPage from './pages/LoginPage'; // Login
+import HomePage from './pages/HomePage'; // HomePage
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/tasks" element={<TaskList />} />
-        <Route path="/tasks/create" element={<TaskForm />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<LoginPage />} />
       </Routes>
     </Router>
   );
