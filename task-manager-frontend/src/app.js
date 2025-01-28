@@ -5,7 +5,8 @@ import './styles/Register.css'; // Adjust path if styles folder is at src level
 import RegisterPage from './pages/RegisterPage'; // Create/Register
 import LoginPage from './pages/LoginPage'; // Login
 import HomePage from './pages/HomePage'; // HomePage
-import ForgetPassword from './pages/ForgetPassword';
+import ForgetPassword from './pages/ForgotPassword'; // ForgetPassword
+import ResetPassword from './pages/ResetPassword'; // ResetPassword
 function App() {
   return (
     <Router>
@@ -13,7 +14,8 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/forget-password" element={<ForgetPassword />} />
+        <Route path="/forgot-password" element={<ForgetPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </Router>
   );
