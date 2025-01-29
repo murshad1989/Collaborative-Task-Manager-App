@@ -1,2 +1,4 @@
 .env
 node_modules
+backend/.env
+task-manager-frontend/node_modules
