@@ -58,7 +58,7 @@ const LoginPage = () => {
           </button>
         </form>
         <p className="reset-password">
-          <a href="/forget-password">Forgot Password?</a>
+          <a href="/forget-password">Forget Password?</a>
         </p>
       </div>
 
