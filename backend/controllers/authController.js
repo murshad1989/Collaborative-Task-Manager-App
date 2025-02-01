@@ -1,218 +1,202 @@
-const pool = require('../config/database');
-const { hashPassword, comparePassword, generateToken } = require('../utils/auth');
-const nodemailer = require('nodemailer');
+/**
+ * Authentication controller
+ * @module controllers/authController
+ */
+
 const crypto = require('crypto');
+const User = require('../models/User');
+const { generateToken } = require('../config/jwt');
+const { sendEmail } = require('../config/email');
+const { APIError } = require('../middlewares/errorHandler');
+const logger = require('../utils/logger');
 
-// Email configuration
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
-
-const register = async (req, res) => {
+/**
+ * Register a new user
+ * @route POST /api/auth/register
+ */
+exports.register = async (req, res, next) => {
     try {
-        const { username, email, password } = req.body;
-
-        console.log('Registering user:', { username, email }); // Debug log
+        const { email, password, name } = req.body;
 
         // Check if user already exists
-        const [existingUsers] = await pool.execute(
-            'SELECT * FROM users WHERE email = ? OR username = ?',
-            [email, username]
-        );
-
-        if (existingUsers.length > 0) {
-            return res.status(400).json({ 
-                message: 'User with this email or username already exists' 
-            });
+        const existingUser = await User.findByEmail(email);
+        if (existingUser) {
+            throw new APIError('Email already registered', 400);
         }
 
-        // Hash password
-        const hashedPassword = await hashPassword(password);
-        console.log('Password hashed successfully'); // Debug log
-
-        // Create user
-        const [result] = await pool.execute(
-            'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-            [username, email, hashedPassword]
-        );
-
-        console.log('User inserted successfully:', result); // Debug log
+        // Create new user
+        const user = await User.create({
+            email,
+            password,
+            name
+        });
 
         // Generate token
-        const token = generateToken(result.insertId);
+        const token = generateToken(user);
+
+        logger.info('New user registered:', {
+            userId: user.id,
+            email: user.email
+        });
 
         res.status(201).json({
-            message: 'User registered successfully',
-            token,
-            user: {
-                id: result.insertId,
-                username,
-                email
+            status: 'success',
+            data: {
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name
+                },
+                token
             }
         });
     } catch (error) {
-        console.error('Registration error details:', error); // Detailed error log
-        res.status(500).json({ 
-            message: 'Error registering user',
-            details: error.message // Adding error details to response
-        });
+        next(error);
     }
 };
 
-const login = async (req, res) => {
+/**
+ * Login user
+ * @route POST /api/auth/login
+ */
+exports.login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
 
         // Get user
-        const [users] = await pool.execute(
-            'SELECT * FROM users WHERE email = ?',
-            [email]
-        );
-
-        if (users.length === 0) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+        const user = await User.findByEmail(email);
+        if (!user) {
+            throw new APIError('Invalid email or password', 401);
         }
 
-        const user = users[0];
-
         // Check password
-        const isValidPassword = await comparePassword(password, user.password);
+        const isValidPassword = await User.verifyPassword(password, user.password);
         if (!isValidPassword) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            throw new APIError('Invalid email or password', 401);
         }
 
         // Generate token
-        const token = generateToken(user.id);
+        const token = generateToken(user);
+
+        logger.info('User logged in:', {
+            userId: user.id,
+            email: user.email
+        });
 
         res.json({
-            message: 'Login successful',
-            token,
-            user: {
-                id: user.id,
-                username: user.username,
-                email: user.email
+            status: 'success',
+            data: {
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name
+                },
+                token
             }
         });
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ message: 'Error logging in' });
+        next(error);
     }
 };
 
-const forgotPassword = async (req, res) => {
+/**
+ * Request password reset
+ * @route POST /api/auth/forgot-password
+ */
+exports.forgotPassword = async (req, res, next) => {
     try {
         const { email } = req.body;
 
-        // Check if user exists
-        const [users] = await pool.execute(
-            'SELECT * FROM users WHERE email = ?',
-            [email]
-        );
-
-        if (users.length === 0) {
-            return res.status(404).json({ message: 'User not found' });
+        // Get user
+        const user = await User.findByEmail(email);
+        if (!user) {
+            throw new APIError('No user found with this email', 404);
         }
 
         // Generate reset token
         const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+        const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-        // Save reset token in database
-        await pool.execute(
-            'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE email = ?',
-            [resetToken, resetTokenExpiry, email]
-        );
+        // Save reset token
+        await User.storeResetToken(email, resetToken, resetTokenExpires);
 
         // Send reset email
-        const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
+        const resetURL = `${req.protocol}://${req.get('host')}/reset-password/${resetToken}`;
+        
+        await sendEmail({
             to: email,
             subject: 'Password Reset Request',
             html: `
-                <h2>Password Reset Request</h2>
-                <p>Click the link below to reset your password:</p>
-                <a href="${resetLink}">${resetLink}</a>
+                <p>You requested a password reset. Click the link below to reset your password:</p>
+                <a href="${resetURL}">${resetURL}</a>
+                <p>If you didn't request this, please ignore this email.</p>
                 <p>This link will expire in 1 hour.</p>
             `
-        };
+        });
 
-        await transporter.sendMail(mailOptions);
+        logger.info('Password reset email sent:', { email });
 
-        res.json({ message: 'Password reset link sent to your email' });
+        res.json({
+            status: 'success',
+            message: 'Password reset instructions sent to email'
+        });
     } catch (error) {
-        console.error('Forgot password error:', error);
-        res.status(500).json({ message: 'Error processing forgot password request' });
+        next(error);
     }
 };
 
-const resetPassword = async (req, res) => {
+/**
+ * Reset password
+ * @route POST /api/auth/reset-password
+ */
+exports.resetPassword = async (req, res, next) => {
     try {
-        const { token, newPassword } = req.body;
+        const { token, password } = req.body;
 
-        // Find user with valid reset token
-        const [users] = await pool.execute(
-            'SELECT * FROM users WHERE reset_token = ? AND reset_token_expiry > NOW()',
-            [token]
-        );
-
-        if (users.length === 0) {
-            return res.status(400).json({ message: 'Invalid or expired reset token' });
+        // Verify reset token
+        const user = await User.verifyResetToken(token);
+        if (!user) {
+            throw new APIError('Invalid or expired reset token', 400);
         }
 
-        // Hash new password
-        const hashedPassword = await hashPassword(newPassword);
+        // Update password
+        await User.updatePassword(user.id, password);
 
-        // Update password and clear reset token
-        await pool.execute(
-            'UPDATE users SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?',
-            [hashedPassword, users[0].id]
-        );
+        logger.info('Password reset successful:', {
+            userId: user.id,
+            email: user.email
+        });
 
-        res.json({ message: 'Password reset successful' });
+        res.json({
+            status: 'success',
+            message: 'Password has been reset successfully'
+        });
     } catch (error) {
-        console.error('Reset password error:', error);
-        res.status(500).json({ message: 'Error resetting password' });
+        next(error);
     }
 };
 
-const getProfile = async (req, res) => {
+/**
+ * Get current user profile
+ * @route GET /api/auth/me
+ */
+exports.getMe = async (req, res, next) => {
     try {
+        const user = await User.findById(req.user.id);
+        
         res.json({
-            user: {
-                id: req.user.id,
-                username: req.user.username,
-                email: req.user.email
+            status: 'success',
+            data: {
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role,
+                    createdAt: user.created_at
+                }
             }
         });
     } catch (error) {
-        console.error('Get profile error:', error);
-        res.status(500).json({ message: 'Error getting profile' });
+        next(error);
     }
-};
-
-const logout = async (req, res) => {
-    try {
-        // Since we're using JWT, we just need to send a success response
-        // The frontend will handle removing the token
-        res.status(200).json({ 
-            message: 'Logged out successfully'
-        });
-    } catch (error) {
-        console.error('Logout error:', error);
-        res.status(500).json({ message: 'Error during logout' });
-    }
-};
-
-module.exports = {
-    register,
-    login,
-    forgotPassword,
-    resetPassword,
-    getProfile,
-    logout
 };
